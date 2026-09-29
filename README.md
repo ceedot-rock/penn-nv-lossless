@@ -14,8 +14,9 @@ that produced them. No codec source ships here.
 Every candidate below was run for real on every file. The per-file winner is
 the smallest **actual** compressed bytes (exact selection — no estimates, no
 skipped candidates). Every compressed output was decoded and SHA-256-verified
-against the original: **zero decode failures** across 684 verified
-encode/decode roundtrips.
+against the original: **zero decode failures** across 673 verified
+encode/decode roundtrips (684 attempts; 11 were PCCX refuses by design,
+excluded from the count).
 
 ## Results (totals over all 76 files)
 
@@ -42,6 +43,10 @@ Per-file winners: Coaster smallest/fastpass won 69 files, PCCX 0.3.0 won 6
 CSVs and notebooks, by small margins) — the honest summary is that the lab
 codecs win the corpus by **7,869,766 bytes (5.57%) over xz -6**, not every
 individual file.
+
+Note: the "TNSSRC dev" row is byte-identical to PCC (classic) on all 76/76
+files (identical total 136,096,642) — it carries no new information beyond
+the PCC row and is kept for the record only.
 
 ## Caveats
 

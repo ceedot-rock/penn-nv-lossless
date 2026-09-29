@@ -1,4 +1,4 @@
-tag	orig_bytes	best_method	best_bytes	xz6_bytes	saved_vs_xz6	enc_s
+tag	orig_bytes	best_lab_codec	best_lab_bytes	xz6_bytes	saved_vs_xz6	enc_s
 codeproc__data_processing__MWExperimentData.py	21776	coaster-smallest	5455	5424	-31	0.691
 codeproc__data_processing__example.ipynb	18680	coaster-smallest	13321	13220	-101	0.443
 codeproc__data_processing__example_data_125iMQC_L1_C0_111824.mat	4361720	coaster-smallest	1550288	1546884	-3404	165.059
