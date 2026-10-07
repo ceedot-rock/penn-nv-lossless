@@ -1,0 +1,106 @@
+name: Audited checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  data-integrity:
+    name: Data integrity (TSVs, README totals, driver parse)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check TSV shape and totals
+        run: |
+          python3 - <<'EOF'
+          import csv, subprocess, sys
+          from pathlib import Path
+
+          def check_rows(path, data_rows, cols):
+              lines = Path(path).read_text().splitlines()
+              assert len(lines) == data_rows + 1, (path, len(lines))
+              with open(path) as f:
+                  for i, row in enumerate(csv.reader(f, delimiter="\t")):
+                      assert len(row) == cols, (path, i, len(row))
+              print(f"{path}: {data_rows} data rows x {cols} cols OK")
+
+          check_rows("results/results.tsv", 380, 9)
+          check_rows("results/results-arsenal.tsv", 304, 9)
+          check_rows("results/perfile_best.tsv", 76, 7)
+
+          EXPECT = {
+              "gzip-9": 230352166, "zstd-3": 203914264, "zstd-19": 146059751,
+              "xz-6": 141264984, "pcc": 136096642,
+              "pccx": 165693847, "tnssrc": 136096642,
+              "coaster-smallest": 133397937, "coaster-fastpass": 133397937,
+          }
+
+          def totals(path):
+              # pccx refuses 11 incompressible inputs by design (empty comp);
+              # every other method must have a comp value on every row.
+              sums, orig, pccx_data = {}, {}, 0
+              with open(path) as f:
+                  for r in csv.DictReader(f, delimiter="\t"):
+                      comp = r["comp"].strip()
+                      if comp == "":
+                          assert r["method"] == "pccx", (path, r["tag"], r["method"])
+                      else:
+                          if r["method"] == "pccx":
+                              pccx_data += 1
+                      sums[r["method"]] = sums.get(r["method"], 0) + (int(comp) if comp else 0)
+                      orig[r["tag"]] = int(r["orig"])
+              if path.endswith("results-arsenal.tsv"):
+                  assert pccx_data == 65, pccx_data
+                  print("pccx: 65 measured rows + 11 documented refusals OK")
+              return sums, orig
+
+          for path in ("results/results.tsv", "results/results-arsenal.tsv"):
+              sums, orig = totals(path)
+              for m, v in EXPECT.items():
+                  if m in sums:
+                      assert sums[m] == v, (path, m, sums[m], v)
+                      print(f"{path} {m}: {v} OK")
+              assert len(orig) == 76, (path, len(orig))
+              assert sum(orig.values()) == 273190871, (path, sum(orig.values()))
+              print(f"{path}: original total 273190871 OK")
+
+          best = 0
+          with open("results/perfile_best.tsv") as f:
+              for r in csv.DictReader(f, delimiter="\t"):
+                  best += int(r["best_lab_bytes"])
+          assert best == 133395218, best
+          print("per-file best total 133395218 OK")
+
+          md = Path("README.md").read_text()
+          for v in ["230,352,166", "141,264,984", "133,397,937",
+                    "133,395,218", "273,190,871"]:
+              assert v in md, v
+          print("README totals table present OK")
+
+          subprocess.run([sys.executable, "-m", "py_compile",
+                          "drivers/arsenal_driver.py"], check=True)
+          for sh in ("drivers/run_all.sh", "drivers/bench_one_q.sh"):
+              subprocess.run(["bash", "-n", sh], check=True)
+          print("driver parse OK (py_compile + bash -n)")
+          EOF
+
+  secrets-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for committed secrets
+        run: |
+          set -e
+          echo "Scanning for common secret patterns..."
+          ! grep -rnE "AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY|sk_(live|test)_[A-Za-z0-9]+|xox[bap]-[A-Za-z0-9-]+|-----BEGIN" \
+            --include="*.py" --include="*.sh" --include="*.txt" --include="*.md" --include="*.yml" --exclude="audited-checks.yml" .
+          echo "No secrets found."
