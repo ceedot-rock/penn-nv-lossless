@@ -1,5 +1,8 @@
 # Penn NV-diamond dataset — lossless archival benchmark
 
+[![Audited checks](https://github.com/ceedot-rock/penn-nv-lossless/actions/workflows/audited-checks.yml/badge.svg)](https://github.com/ceedot-rock/penn-nv-lossless/actions/workflows/audited-checks.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Measured 2026-09-20/21 by [Slid Phi Labs](https://slidphilabs.com) on the
 76-file corpus behind
 [penn-qel/parallel_entanglement](https://github.com/penn-qel/parallel_entanglement):
